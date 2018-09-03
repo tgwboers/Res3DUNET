@@ -170,9 +170,7 @@ def main():
                                     epochs=config.getint('TRAINING', 'n_epochs'),
                                     validation_data=validation_batch_generator,
                                     validation_steps=nb_validation_samples,
-                                    pickle_safe=False,
                                     #use_multiprocessing=False,
-                                    workers=0,
                                     shuffle=False,
                                     verbose=1,
                                     callbacks=train_manager.get_callbacks(

@@ -2,10 +2,6 @@ import numpy as np
 from numpy.random import random
 from scipy.ndimage.interpolation import map_coordinates, rotate, shift, zoom
 from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage import generate_binary_structure, binary_dilation
-from scipy.ndimage.measurements import label, center_of_mass, variance, standard_deviation
-from scipy.ndimage.morphology import binary_dilation
-from keras.utils import to_categorical
 import time
 
 
@@ -43,6 +39,11 @@ def augment_data(img, gt, config):
         if random() < config.getfloat('AUGMENTATION', 'augment_prob_deform'):
             img, gt = get_random_elastic(img, gt, alpha_mm=config.getfloat('AUGMENTATION','augment_alpha_mm'),
                                                                           sigma=config.getfloat('AUGMENTATION','augment_sigma'), random_state=None)
+    if(config.getboolean('AUGMENTATION', 'augment_gauss_noise')):
+        if random() < config.getfloat('AUGMENTATION', 'augment_prob_deform'):
+            img, gt = get_gauss_noise(img, gt, mean=config.getfloat('AUGMENTATION','augment_noise_mean'),
+                                         sigma=config.getfloat('AUGMENTATION','augment_noise_sigma'))
+
     #img, gt = crop_image_to_input_size(img,gt)
 
     return img, gt
@@ -130,38 +131,12 @@ def crop_image_to_input_size(img,gt):
     return img_resize, gt_resize
 
 
+def get_gauss_noise(img, gt, mean, sigma):
+    # generate random noise
+    gauss = np.random.normal(mean, sigma, img.shape).astype(np.float32)
 
+    # add noise to only the image data
+    img_noise = img + gauss
+    gt_noise = gt
 
-    # Data will be randomly rotated in the xy plane, by a maximum angle rotate_max_angle
-    if(config.getboolean('AUGMENTATION', 'augment_rotate')):
-        if random() < config.getfloat('AUGMENTATION', 'augment_prob_rotate'):
-            img, gt, pred, scrbs1, scrbs2, diff = get_random_rotation_rnet(img, gt, pred, scrbs1, scrbs2, diff, rotate_max_angle=config.getfloat('AUGMENTATION','augment_rotate_max_angle'))
-    # Data will be randomly shifted along the x, y and z axis, by a maximum distance augment_shift_max_vox (in mm)
-    if(config.getboolean('AUGMENTATION', 'augment_shift')):
-        if random() < config.getfloat('AUGMENTATION', 'augment_prob_shift'):
-            img, gt, pred, scrbs1, scrbs2, diff = get_random_shift_rnet(img, gt, pred, scrbs1, scrbs2, diff,shift_max_vox=config.getfloat('AUGMENTATION','augment_shift_max_vox'))
-    # Data will be flipped in the x-dimension
-    if(False):
-        if random() < config.getfloat('AUGMENTATION', 'augment_prob_flip'):
-            img = img[::-1, :, :, :]
-            gt = gt[::-1, :, :, :]
-    # Data will be randomly zoomed in or out, by a factor between 1 - dzoom_max and 1 + dzoom_max
-    if(config.getboolean('AUGMENTATION', 'augment_zoom')):
-        if random() < config.getfloat('AUGMENTATION', 'augment_prob_zoom'):
-            img, gt, pred, scrbs1, scrbs2, diff = get_random_zoom_rnet(img, gt, pred, scrbs1, scrbs2, diff, dzoom_max=config.getfloat('AUGMENTATION','augment_dzoom_max'))
-    # Data will be randomly deformed by elastic deformation
-    if(False):
-        if random() < config.getfloat('AUGMENTATION', 'augment_prob_deform'):
-            img, gt, pred, scrbs1, scrbs2, diff = get_random_elastic_rnet(img, gt, pred, scrbs1, scrbs2, diff, alpha_mm=config.getfloat('AUGMENTATION','augment_alpha_mm'),
-                                         sigma=config.getfloat('AUGMENTATION','augment_sigma'), random_state=None)
-    #img, gt = crop_image_to_input_size(img,gt)
-
-    return img, gt, pred, scrbs1, scrbs2, scrbs1_int
-
-def calculate_difference(gt, pred):
-    difference = np.zeros(gt.shape, dtype=np.uint8)
-    difference[np.where((gt == 1) & (pred != 1))] = 2
-    difference[np.where((gt != 1) & (pred == 1))] = 1
-
-    return difference
-
+    return img_noise, gt_noise
