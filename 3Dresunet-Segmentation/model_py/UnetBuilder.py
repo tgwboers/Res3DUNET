@@ -5,6 +5,7 @@ from keras.engine import Input, Model
 from keras.layers import BatchNormalization, ZeroPadding3D, Conv3D, MaxPooling3D, UpSampling3D, Cropping3D, Activation, Add
 from keras.optimizers import Adam
 from keras import regularizers
+from keras import __version__ as k_version
 import tensorflow as tf
 try:
     from keras.engine import merge
@@ -18,11 +19,12 @@ class UnetBuilder(object):
     """
 
     def __init__(self,config):
+        print('Tensorflow version: ',tf.__version__)
+        print('Keras version:', k_version)
 
-
-        self.input_shape=eval(config.get('DATA', 'grid_size'))
-        self.pool_size=eval(config.get('MODEL', 'pool_size'))
-        self.initial_learning_rate=config.getfloat('TRAINING', 'initial_learning_rate')
+        self.input_shape = eval(config.get('DATA', 'grid_size'))
+        self.pool_size = eval(config.get('MODEL', 'pool_size'))
+        self.initial_learning_rate = config.getfloat('TRAINING', 'initial_learning_rate')
 
         self.n_labels = config.getint('DATA', 'n_labels')
         self.wt_fac = eval(config.get('TRAINING', 'loss_weight_factors'))
@@ -158,7 +160,7 @@ class UnetBuilder(object):
         # Scale predictions so that the class probabilities of each sample sum to 1
         y_pred /= tf.reduce_sum(y_pred,
                                 axis=len(y_pred.get_shape()) - 1,
-                                keep_dims=True)
+                                keepdims=True)
         # Ensuring probabilities <0, 1>
         epsilon = tf.cast(_EPSILON, y_pred.dtype.base_dtype)
         y_pred = tf.clip_by_value(y_pred, epsilon, 1. - epsilon)

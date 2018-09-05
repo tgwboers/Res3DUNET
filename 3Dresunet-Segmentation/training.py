@@ -1,7 +1,10 @@
-import os
+import subprocess
+output = subprocess.check_output(["git", "pull"])
 
+import os
 import tables
 import configparser
+import pandas as pd
 
 import matplotlib
 matplotlib.use('Agg')
@@ -19,6 +22,7 @@ config.read('config.ini')
 crun = config['CRUN']
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 def main():
 
@@ -62,7 +66,7 @@ def main():
 
     model.summary()
 
-
+    df = pd.DataFrame(columns=['KFOLD', 'CaseNumber', 'Dice'])
 
     # Save initial model weights to use for reinitialisation later
     model_initial_weights = model.get_weights()
@@ -180,6 +184,17 @@ def main():
                                         learning_rate_epochs=config.getfloat('TRAINING','decay_learning_rate_every_x_epochs'),
                                         logging_dir=config.get('PATH','logging_dir'),
                                         ifold=ifold))
+
+                for val_case in validation_list:
+                    loss, acc = model.evaluate(x=hdf5_file_opened.root.img[val_case],
+                                                y=hdf5_file_opened.root.gt[val_case],
+                                                batch_size=config.getint('TRAINING', 'batch_size'),
+                                                verbose=0)
+                    print('casenumber: {} with score: {}'.format(val_case, acc))
+                    df.append({'Kfold':ifold, 'Casenumber': val_case, 'DICE':acc})
+
+
+                df.to_csv(config.get('PATH', 'training_log'))
 
     hdf5_file_opened.close()
 
